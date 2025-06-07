@@ -1,101 +1,97 @@
-# server_thread_pool_http.py (Versi Final untuk mendukung LIST dan UPLOAD)
-
-from socket import *
+from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 import socket
-import time
-import sys
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from http import HttpServer
 
+# Initialize HTTP server logic
 httpserver = HttpServer()
 
 def get_headers(data_bytes):
-    # Fungsi bantuan untuk mem-parsing header dari bytes
-    headers = {}
-    # Hindari error jika tidak ada header sama sekali
+    """
+    Parse HTTP headers from raw request bytes up to "\r\n\r\n".
+    Returns a dict mapping lowercase header names to values.
+    """
     if b'\r\n' not in data_bytes:
-        return headers
-        
-    header_str = data_bytes.split(b'\r\n\r\n')[0].decode('utf-8', errors='ignore')
-    lines = header_str.split('\r\n')[1:] # Abaikan request line pertama
+        return {}
+    header_str = data_bytes.split(b'\r\n\r\n', 1)[0].decode('utf-8', errors='ignore')
+    lines = header_str.split('\r\n')[1:]  # Skip the request line
+    headers = {}
     for line in lines:
         if ': ' in line:
-            key, value = line.split(': ', 1)
-            headers[key.lower()] = value
+            key, val = line.split(': ', 1)
+            headers[key.lower()] = val
     return headers
 
-def ProcessTheClient(connection, address):
-    try:        
-        # 1. Baca data sampai seluruh header diterima (ditandai dengan \r\n\r\n)
-        header_buffer = b""
-        while b'\r\n\r\n' not in header_buffer:
-            data = connection.recv(1024)
-            if not data:
-                break
-            header_buffer += data
-        
-        # Jika tidak ada data sama sekali, tutup koneksi
-        if not header_buffer:
-            connection.close()
-            return
-            
-        # Pisahkan bagian header dan sisa body yang mungkin sudah terbaca
-        header_part, _, body_spillover = header_buffer.partition(b'\r\n\r\n')
-        
-        # 2. Urai header untuk mendapatkan Content-Length
-        headers = get_headers(header_part)
-        content_length = int(headers.get('content-length', 0))
-        
-        # 3. Baca sisa body sesuai Content-Length
-        body_buffer = body_spillover
-        bytes_to_read = content_length - len(body_buffer)
-        
-        if bytes_to_read > 0:
-            # MSG_WAITALL memastikan kita menerima semua byte yang diminta
-            body_buffer += connection.recv(bytes_to_read, socket.MSG_WAITALL)
+def ProcessTheClient(conn, addr):
+    """
+    Handle a single client connection:
+     1. Read request headers until "\r\n\r\n"
+     2. Parse Content-Length and read the body
+     3. Process the full request via HttpServer.proses()
+     4. Send the response and close the connection
+    """
+    try:
+        # 1) Read headers
+        buffer = b''
+        while b'\r\n\r\n' not in buffer:
+            chunk = conn.recv(1024)
+            if not chunk:
+                conn.close()
+                return
+            buffer += chunk
 
-        # 4. Gabungkan semua bagian menjadi satu request utuh dan proses
-        full_request = header_part + b'\r\n\r\n' + body_buffer
-        
-        logging.warning(f"[{address}] Processing ({len(full_request)} bytes...")
-        
-        hasil = httpserver.proses(full_request)
-        
-        connection.sendall(hasil)
+        header_part, _, spill = buffer.partition(b'\r\n\r\n')
+
+        # 2) Read body if Content-Length is set
+        headers = get_headers(header_part)
+        length = int(headers.get('content-length', 0))
+        body = spill
+        if len(body) < length:
+            body += conn.recv(length - len(body), socket.MSG_WAITALL)
+
+        # 3) Process request
+        full_request = header_part + b'\r\n\r\n' + body
+        logging.warning(f"[{addr}] Processing {len(full_request)} bytes")
+        response = httpserver.proses(full_request)
+
+        # 4) Send response
+        conn.sendall(response)
 
     except (socket.timeout, ConnectionResetError) as e:
-        logging.error(f"[{address}] Connection error: {e}")
+        logging.error(f"[{addr}] Connection error: {e}")
     except Exception as e:
-        logging.error(f"[{address}] Unhandled error: {e}")
+        logging.error(f"[{addr}] Unexpected error: {e}")
     finally:
-        # Pastikan koneksi selalu ditutup
-        logging.warning(f"[{address}] Closing connection.")
-        connection.close()
-
+        logging.warning(f"[{addr}] Closing connection")
+        conn.close()
 
 def Server():
-    my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    """
+    Listen on 0.0.0.0:8885 and dispatch each connection
+    to a thread from a fixed-size pool.
+    """
+    srv = socket.socket(AF_INET, SOCK_STREAM)
+    srv.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    srv.bind(('0.0.0.0', 8885))
+    srv.listen(50)
+    logging.warning("Listening on 0.0.0.0:8885 (ThreadPool mode)")
 
-    my_socket.bind(('0.0.0.0', 8885))
-    my_socket.listen(50)
-    logging.warning("[ThreadPool] Listening on 0.0.0.0:8885 ...")
-
-    with ThreadPoolExecutor(20) as executor:
+    with ThreadPoolExecutor(max_workers=20) as pool:
         while True:
             try:
-                connection, client_address = my_socket.accept()
-                logging.warning(f"[Server] Accepted connection from {client_address}")
-                executor.submit(ProcessTheClient, connection, client_address)
+                conn, addr = srv.accept()
+                logging.warning(f"Accepted connection from {addr}")
+                pool.submit(ProcessTheClient, conn, addr)
             except KeyboardInterrupt:
-                logging.warning("[Server] Shutting down.")
+                logging.warning("Server shutting down")
                 break
             except Exception as e:
-                logging.error(f"Error in server loop: {e}")
+                logging.error(f"Server loop error: {e}")
 
 def main():
-    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.WARNING,
+                        format="%(asctime)s %(levelname)s %(message)s")
     Server()
 
 if __name__ == "__main__":
