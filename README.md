@@ -32,18 +32,18 @@ Masuk ke `client/` dan jalankan operasi list, upload, dan delete seperti contoh 
 
 - List File pada Satu Direktori
   
-```bash
-python3 client_advanced.py localhost:8885 list /
-```
+  ```bash
+  python3 client_advanced.py localhost:8885 list /
+  ```
 
 - Upload File
 
-```bash
-python3 client_advanced.py localhost:8885 upload ../lokal.pdf client/nama_remote.pdf
-```
+  ```bash
+  python3 client_advanced.py localhost:8885 upload ../lokal.pdf client/nama_remote.pdf
+  ```
 
 - Delete File
 
-```bash
-python3 client_advanced.py localhost:8885 delete client/nama_remote.pdf
-```
+  ```bash
+  python3 client_advanced.py localhost:8885 delete client/nama_remote.pdf
+  ```
