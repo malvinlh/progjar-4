@@ -1,13 +1,20 @@
 # progjar-4
 
-Tugas 4 Pemrograman Jaringan (D) 2025 adalah implementasi server HTTP/1.0 berbasis Python yang ringan, beserta klien baris perintah (CLI), dengan dukungan operasi berkas (list, upload, delete) dan berbagai mode konkurensi. Tugas ini menunjukkan cara:
+Tugas 4 Pemrograman Jaringan (D) 2025 adalah implementasi server HTTP/1.0 berbasis Python yang ringan, beserta klien baris perintah (CLI), dengan dukungan operasi berkas (list, upload, delete) dan dua mode konkurensi (thread-pool dan process-pool). Seluruh komponen dijalankan di **localhost**, artinya server dan klien berjalan pada mesin yang sama.
+
+Tugas ini menunjukkan cara:
 
 - Menyajikan isi direktori (`GET /some/dir/`)  
 - Mengunggah berkas (`POST /upload/<filename>`)  
 - Menghapus berkas (`DELETE /<filename>`)  
 - Menjalankan server dalam mode thread-pool dan process-pool
 
-File yang digunakan pada tugas ini adalah `http.py`, `server_thread_pool_http.py`, `server_process_pool_http.py`, dan `client/client_advanced.py`.
+File utama yang digunakan:
+
+- `http.py`  
+- `server_thread_pool_http.py`  
+- `server_process_pool_http.py`  
+- `client/client_advanced.py`
 
 
 
