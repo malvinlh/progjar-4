@@ -35,7 +35,7 @@ File utama yang digunakan:
 
 ### 2. Jalankan Klien CLI
 
-Masuk ke `client/` dan jalankan operasi list, upload, dan delete seperti contoh di bawah ini:
+Masuk ke `client/` dan jalankan operasi list, upload, dan delete seperti contoh di bawah ini.
 
 - List File pada Satu Direktori
   
