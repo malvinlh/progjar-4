@@ -26,9 +26,7 @@ def get_headers(data_bytes):
     return headers
 
 def ProcessTheClient(connection, address):
-    try:
-        # --- LOGIKA BARU YANG ANDAL ---
-        
+    try:        
         # 1. Baca data sampai seluruh header diterima (ditandai dengan \r\n\r\n)
         header_buffer = b""
         while b'\r\n\r\n' not in header_buffer:
@@ -60,7 +58,7 @@ def ProcessTheClient(connection, address):
         # 4. Gabungkan semua bagian menjadi satu request utuh dan proses
         full_request = header_part + b'\r\n\r\n' + body_buffer
         
-        logging.warning(f"[{address}] Full request received ({len(full_request)} bytes). Processing...")
+        logging.warning(f"[{address}] Processing ({len(full_request)} bytes...")
         
         hasil = httpserver.proses(full_request)
         
@@ -91,7 +89,7 @@ def Server():
                 logging.warning(f"[Server] Accepted connection from {client_address}")
                 executor.submit(ProcessTheClient, connection, client_address)
             except KeyboardInterrupt:
-                logging.warning("\n[Server] Shutting down.")
+                logging.warning("[Server] Shutting down.")
                 break
             except Exception as e:
                 logging.error(f"Error in server loop: {e}")
