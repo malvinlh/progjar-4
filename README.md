@@ -7,7 +7,7 @@ Tugas ini menunjukkan cara:
 - Menyajikan isi direktori (`GET /some/dir/`)  
 - Mengunggah berkas (`POST /upload/<filename>`)  
 - Menghapus berkas (`DELETE /<filename>`)  
-- Menjalankan server dalam mode thread-pool dan process-pool
+- Menjalankan server dalam mode **thread-pool** dan **process-pool**
 
 File utama yang digunakan:
 
